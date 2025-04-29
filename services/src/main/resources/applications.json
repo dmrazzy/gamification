@@ -8,12 +8,13 @@
             "enabled": true,
             "application": {
                 "title": "Contributions Review",
-                "description": "Contributions Review application",
                 "url": "./contributions/achievements",
                 "system": false,
-                "active": true,
-                "isMandatory": false,
-                "isMobile": true,
+                "active": false,
+                "mobile": false,
+                "default": false,
+                "shortcut": "?",
+                "pwa": true,
                 "permissions": [
                     "*:/platform/users",
                     "*:/platform/externals"
