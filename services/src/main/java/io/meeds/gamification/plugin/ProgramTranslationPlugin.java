@@ -19,7 +19,12 @@
  */
 package io.meeds.gamification.plugin;
 
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Component;
+
 import org.exoplatform.commons.exception.ObjectNotFoundException;
+import org.exoplatform.container.PortalContainer;
+import org.exoplatform.portal.config.UserACL;
 import org.exoplatform.social.core.identity.model.Identity;
 import org.exoplatform.social.core.manager.IdentityManager;
 import org.exoplatform.social.core.space.model.Space;
@@ -28,7 +33,11 @@ import org.exoplatform.social.core.space.spi.SpaceService;
 import io.meeds.gamification.model.ProgramDTO;
 import io.meeds.gamification.service.ProgramService;
 import io.meeds.social.translation.plugin.TranslationPlugin;
+import io.meeds.social.translation.service.TranslationService;
 
+import jakarta.annotation.PostConstruct;
+
+@Component
 public class ProgramTranslationPlugin extends TranslationPlugin {
 
   public static final String PROGRAM_OBJECT_TYPE            = "program";
@@ -37,18 +46,24 @@ public class ProgramTranslationPlugin extends TranslationPlugin {
 
   public static final String PROGRAM_TITLE_FIELD_NAME       = "title";
 
+  @Autowired
   private ProgramService     programService;
 
+  @Autowired
   private SpaceService       spaceService;
 
+  @Autowired
   private IdentityManager    identityManager;
 
-  public ProgramTranslationPlugin(ProgramService programService,
-                                  SpaceService spaceService,
-                                  IdentityManager identityManager) {
-    this.programService = programService;
-    this.spaceService = spaceService;
-    this.identityManager = identityManager;
+  @Autowired
+  private UserACL            userACL;
+
+  @Autowired
+  private PortalContainer    container;
+
+  @PostConstruct
+  public void init() {
+    container.getComponentInstanceOfType(TranslationService.class).addPlugin(this);
   }
 
   @Override
@@ -58,17 +73,12 @@ public class ProgramTranslationPlugin extends TranslationPlugin {
 
   @Override
   public boolean hasAccessPermission(long programId, String username) throws ObjectNotFoundException {
-    return programService.canViewProgram(programId, username);
+    return userACL.hasAccessPermission(PROGRAM_OBJECT_TYPE, String.valueOf(programId), username);
   }
 
   @Override
   public boolean hasEditPermission(long programId, String username) throws ObjectNotFoundException {
-    ProgramDTO program = this.programService.getProgramById(programId);
-    if (program == null) {
-      throw new ObjectNotFoundException(String.format("Program with id %s wasn't found",
-                                                      programId));
-    }
-    return programService.isProgramOwner(programId, username);
+    return userACL.hasEditPermission(PROGRAM_OBJECT_TYPE, String.valueOf(programId), username);
   }
 
   @Override
