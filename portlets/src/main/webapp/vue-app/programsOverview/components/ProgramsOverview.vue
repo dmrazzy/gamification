@@ -51,6 +51,17 @@
               </v-btn>
               <v-fab-transition hide-on-leave>
                 <v-btn
+                  v-show="displayAddProgram"
+                  :class="!$root.canEdit && 'me-n2'"
+                  class="z-index-one"
+                  small
+                  icon
+                  @click="$root.$emit('program-form-open')">
+                  <v-icon size="18">fa-plus</v-icon>
+                </v-btn>
+              </v-fab-transition>
+              <v-fab-transition hide-on-leave>
+                <v-btn
                   v-show="hoverEdit"
                   :title="$t('gamification.programs.overviewSettings.editTooltip')"
                   :class="!programsDisplayed && 'me-n2 z-index-one'"
@@ -82,11 +93,16 @@
     </v-hover>
     <div v-if="programsDisplayed">
       <gamification-program-list-drawer
-        ref="listDrawer" />
-      <gamification-program-detail-drawer
-        :administrators="administrators" />
-      <engagement-center-rule-extensions />
+        ref="listDrawer"
+        @expand-updated="expandedUpdated" />
     </div>
+    <engagement-center-rule-extensions />
+    <engagement-center-program-detail-drawer
+      :administrators="administrators" />
+    <gamification-program-drawer
+      v-if="!drawerExpanded"
+      ref="programDrawer"
+      :is-administrator="$root.isAdministrator" />
     <gamification-programs-overview-settings-drawer
       v-if="$root.canEdit" />
   </v-app>
@@ -99,6 +115,7 @@ export default {
     spaceId: eXo.env.portal.spaceId,
     hover: false,
     loading: true,
+    drawerExpanded: false
   }),
   computed: {
     programsDisplayed() {
@@ -115,6 +132,9 @@ export default {
     },
     hoverEdit() {
       return this.hover && this.$root.canEdit;
+    },
+    displayAddProgram() {
+      return this.hover && this.$root.canAddProgram && !this.programsDisplayed;
     },
     limit() {
       return this.$root.limit || 4;
@@ -136,7 +156,12 @@ export default {
     },
   },
   created() {
+    this.$root.$on('program-added', this.openCreatedProgramDetail);
+    this.$root.$on('program-updated', this.retrievePrograms);
     this.retrievePrograms();
+  },
+  beforeDestroy() {
+    this.$root.$off('program-added', this.openCreatedProgramDetail);
   },
   methods: {
     retrievePrograms() {
@@ -157,6 +182,14 @@ export default {
         })
         .finally(() => this.loading = false);
     },
+    expandedUpdated(event) {
+      this.drawerExpanded = event;
+    },
+    openCreatedProgramDetail(program) {
+      if (!this.drawerExpanded) {
+        this.$root.$emit('program-detail-drawer', program, true, true, true);
+      }
+    }
   },
 };
 </script>

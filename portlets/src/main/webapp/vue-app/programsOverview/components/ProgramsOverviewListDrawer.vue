@@ -20,21 +20,38 @@
   <exo-drawer
     id="programsOverviewListDrawer"
     ref="drawer"
-    v-model="drawer"
     :loading="loading"
-    :right="!$vuetify.rtl">
+    :right="!$vuetify.rtl"
+    allow-expand
+    @expand-updated="expandedUpdated">
     <template #title>
       {{ spaceId && $t('gamification.overview.space.programsList') || $t('gamification.overview.programsList') }}
     </template>
     <template #titleIcons>
       <v-btn
-        :href="actionsPageURL"
-        icon>
-        <v-icon size="24">fa-external-link-alt</v-icon>
+        v-if="canAddProgram"
+        icon
+        @click="$root.$emit('program-form-open')">
+        <v-icon size="20">fa-plus</v-icon>
       </v-btn>
     </template>
     <template #content>
-      <gamification-overview-widget height="auto">
+      <v-card
+        v-if="expanded"
+        class="d-flex flex-column light-grey-background-color pa-4"
+        min-height="100%"
+        flat>
+        <v-card
+          class="singlePageApplication pa-0 flex-grow-1 d-flex flex-column fill-height white overflow-hidden"
+          min-height="100%"
+          flat>
+          <gamification-programs
+            :is-administrator="isAdministrator"
+            :is-program-manager="isProgramManager"
+            :can-add-program="canAddProgram" />
+        </v-card>
+      </v-card>
+      <gamification-overview-widget v-else height="auto">
         <gamification-overview-program-item
           v-for="program in programs" 
           :key="program.id"
@@ -52,23 +69,35 @@ export default {
     limitToLoad: -1,
     loading: false,
     spaceId: eXo.env.portal.spaceId,
+    expanded: false,
   }),
   computed: {
-    actionsPageURL() {
-      return eXo.env.portal.portalName === 'public' && '/portal/public/overview/actions' || `${eXo.env.portal.context}/${eXo.env.portal.engagementSiteName}/contributions/actions`;
+    canAddProgram() {
+      return this.$root.canAddProgram;
     },
+    isAdministrator() {
+      return this.$root.isAdministrator;
+    },
+    isProgramManager() {
+      return this.$root.isProgramManager;
+    }
   },
   created() {
     this.$root.$on('programs-overview-list-drawer', this.open);
+    this.$root.$on('program-added', this.retrievePrograms);
   },
   beforeDestroy() {
     this.$root.$off('programs-overview-list-drawer', this.open);
+    this.$root.$off('program-added', this.retrievePrograms);
   },
   methods: {
     open() {
       this.programs = [];
       this.retrievePrograms();
       this.$refs.drawer.open();
+    },
+    close() {
+      this.$refs.drawer.close();
     },
     retrievePrograms() {
       this.loading = true;
@@ -85,6 +114,10 @@ export default {
         .then((data) => this.programs = data?.programs || [])
         .finally(() => this.loading = false);
     },
+    expandedUpdated(event) {
+      this.expanded = event;
+      this.$emit('expand-updated', this.expanded);
+    }
   },
 };
 </script>

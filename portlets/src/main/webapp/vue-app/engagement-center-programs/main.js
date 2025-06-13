@@ -14,7 +14,6 @@
  * along with this program; if not, write to the Free Software Foundation,
  * Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  */
-import './initComponents.js';
 import '../engagement-center/initComponents.js';
 
 // get overridden components if exists
@@ -40,9 +39,9 @@ const urls = [
   `/gamification-portlets/i18n/locale.addon.Gamification?lang=${lang}`
 ];
 
-document.dispatchEvent(new CustomEvent('displayTopBarLoading'));
+export function init(isAdministrator, isProgramManager, canAddProgram) {
+  document.dispatchEvent(new CustomEvent('displayTopBarLoading'));
 
-export function init(isAdministrator, isProgramManager) {
   exoi18n.loadLanguageAsync(lang, urls).then(i18n => {
     // init Vue app when locale ressources are ready
     Vue.createApp({
@@ -64,7 +63,7 @@ export function init(isAdministrator, isProgramManager) {
           window.clearInterval(this.interval);
         }
       },
-      template: `<engagement-center-programs id="${appId}" :is-administrator="${isAdministrator}" :is-program-manager="${isProgramManager}" />`,
+      template: `<gamification-programs id="${appId}" :is-administrator="${isAdministrator}" :is-program-manager="${isProgramManager}" :can-add-program="${canAddProgram}" />`,
       vuetify,
       i18n
     }, `#${appId}`, 'EngagementCenter');

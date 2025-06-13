@@ -22,10 +22,13 @@ import java.util.Date;
 import java.util.List;
 import java.util.Set;
 
+import io.meeds.social.space.template.service.SpaceTemplateService;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import org.exoplatform.commons.exception.ObjectNotFoundException;
+import org.exoplatform.commons.utils.CommonsUtils;
+import org.exoplatform.portal.config.UserACL;
 import org.exoplatform.services.listener.ListenerService;
 import org.exoplatform.services.security.Identity;
 import org.exoplatform.services.security.IdentityConstants;
@@ -42,6 +45,7 @@ import io.meeds.gamification.model.filter.ProgramFilter;
 import io.meeds.gamification.service.ProgramService;
 import io.meeds.gamification.storage.ProgramStorage;
 import io.meeds.gamification.utils.Utils;
+import org.exoplatform.ws.frameworks.cometd.ContinuationService;
 
 @SuppressWarnings("deprecation")
 public class ProgramServiceImpl implements ProgramService {
@@ -56,14 +60,20 @@ public class ProgramServiceImpl implements ProgramService {
 
   protected final SpaceService    spaceService;
 
+  protected final UserACL         userACL;
+
+  protected SpaceTemplateService  spaceTemplateService;
+
   public ProgramServiceImpl(ProgramStorage programStorage,
                             ListenerService listenerService,
                             IdentityManager identityManager,
-                            SpaceService spaceService) {
+                            SpaceService spaceService,
+                            UserACL userACL) {
     this.programStorage = programStorage;
     this.listenerService = listenerService;
     this.identityManager = identityManager;
     this.spaceService = spaceService;
+    this.userACL = userACL;
   }
 
   @Override
@@ -143,7 +153,7 @@ public class ProgramServiceImpl implements ProgramService {
 
   @Override
   public int countOwnedPrograms(String username) {
-    if (StringUtils.isBlank(username)) {
+    if (userACL.isAnonymousUser(username)) {
       return 0;
     }
     org.exoplatform.social.core.identity.model.Identity userIdentity = identityManager.getOrCreateUserIdentity(username);
@@ -154,7 +164,7 @@ public class ProgramServiceImpl implements ProgramService {
 
   @Override
   public int countMemberPrograms(String username) {
-    if (StringUtils.isBlank(username)) {
+    if (userACL.isAnonymousUser(username)) {
       return 0;
     }
     ProgramFilter programFilter = computeMemberProgramsFilter(username);
@@ -179,7 +189,7 @@ public class ProgramServiceImpl implements ProgramService {
     if (program.isDeleted()) {
       throw new IllegalArgumentException("program to create can't be marked as deleted");
     }
-    if (!canAddProgram(aclIdentity)) {
+    if (!canAddProgram(aclIdentity.getUserId(), program.getSpaceId())) {
       throw new IllegalAccessException("The user is not authorized to create a program");
     }
     ProgramDTO createdProgram = createProgram(program, aclIdentity.getUserId());
@@ -365,8 +375,18 @@ public class ProgramServiceImpl implements ProgramService {
   }
 
   @Override
-  public boolean canAddProgram(Identity aclIdentity) {
-    return aclIdentity != null && Utils.isRewardingManager(aclIdentity.getUserId());
+  public boolean canAddProgram(String username, long spaceId) {
+    if (StringUtils.isBlank(username)) {
+      return false;
+    }
+    return spaceId > 0 ? isSpaceManager(spaceId, username)
+                       : (spaceService.getManagerSpacesCount(username) > 0
+                           || getSpaceTemplateService().countManagingSpaceTemplates(username) > 0);
+  }
+
+  @Override
+  public boolean canAddProgram(String username) {
+    return canAddProgram(username, 0);
   }
 
   @Override
@@ -584,6 +604,13 @@ public class ProgramServiceImpl implements ProgramService {
     }
     Utils.broadcastEvent(listenerService, PROGRAM_UPDATED_LISTENER, program, username);
     return getProgramById(program.getId());
+  }
+
+  private SpaceTemplateService getSpaceTemplateService() {
+    if (spaceTemplateService == null) {
+      spaceTemplateService = CommonsUtils.getService(SpaceTemplateService.class);
+    }
+    return spaceTemplateService;
   }
 
 }

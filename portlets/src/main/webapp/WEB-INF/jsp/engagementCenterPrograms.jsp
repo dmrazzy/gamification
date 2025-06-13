@@ -22,16 +22,23 @@
 <%@ page import="org.exoplatform.container.ExoContainerContext"%>
 <%@ page import="io.meeds.gamification.utils.Utils" %>
 <%@ page import="org.exoplatform.services.security.ConversationState" %>
+<%@ page import="org.exoplatform.social.core.space.SpaceUtils" %>
+<%@ page import="org.exoplatform.social.core.space.model.Space" %>
 
 <%
-boolean isAdministrator = Utils.isRewardingManager(ConversationState.getCurrent().getIdentity().getUserId());
-boolean isProgramManager = isAdministrator || ExoContainerContext.getService(ProgramService.class).countOwnedPrograms(ConversationState.getCurrent().getIdentity().getUserId()) > 0;
+  String username = ConversationState.getCurrent().getIdentity().getUserId();
+  ProgramService programService = ExoContainerContext.getService(ProgramService.class);
+  boolean isAdministrator = Utils.isRewardingManager(username);
+  boolean isProgramManager = isAdministrator || programService.countOwnedPrograms(username) > 0;
+
+  Space currentSpace = SpaceUtils.getSpaceByContext();
+  boolean canAddProgram = programService.canAddProgram(username, currentSpace != null ? currentSpace.getSpaceId() : 0);
 %>
 
 <div class="VuetifyApp">
   <div id="EngagementCenterPrograms">
     <script type="text/javascript">
-      window.require(['PORTLET/gamification-portlets/EngagementCenterPrograms'], app => app.init(<%=isAdministrator%>, <%=isProgramManager%>));
+      window.require(['PORTLET/gamification-portlets/EngagementCenterPrograms'], app => app.init(<%=isAdministrator%>, <%=isProgramManager%>, <%=canAddProgram%>));
     </script>
   </div>
 </div>
